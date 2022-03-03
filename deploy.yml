@@ -1,0 +1,50 @@
+---
+- name: "Apache installation using docker"
+  hosts: prod
+  become: true
+  vars_files:
+    - files/secrets/credentials.yml
+  pre_tasks:
+    - name: Install some packages
+      apt:
+        name: '{{ item }}'
+        state: present
+        update_cache: yes
+      when: ansible_distribution == "Debian"
+      loop:
+        - wget
+        - curl
+        - git
+        - python3-pip
+        - docker.io
+    - name: Install pip docker
+      pip:
+        name: docker
+    - name: Start docker service
+      service:
+        name: docker
+        state: started
+  tasks:
+    - name: Copy website file template
+      template:
+        src: index.html.j2
+        dest: /home/yunus/index.html
+    - name: Pull Apache image
+      docker_image:
+        name: "httpd"
+        source: pull
+    - name: Create Apache container
+      become: yes
+      docker_container:
+        name: "webserver"
+        image: "httpd"
+        ports: "8080:80"
+        state: started
+        container_default_behavior: "compatibility"
+        volumes:
+          - /home/yunus/index.html:/usr/local/apache2/htdocs/index.html
+    - name: Add adminstrator to docker group
+      user:
+        name: yunus
+        groups: docker
+        append: yes

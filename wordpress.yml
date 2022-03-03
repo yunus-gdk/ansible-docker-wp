@@ -1,0 +1,26 @@
+---
+- hosts: prod
+  become: true
+  vars:
+    system_user: yunus
+  vars_files:
+    - files/secrets/credentials.yml
+  pre_tasks:
+    - name: Install some packages
+      apt:
+        name: '{{ item }}'
+        state: present
+        update_cache: yes
+      when: ansible_distribution == "Debian"
+      loop:
+        - wget
+        - curl
+    - name: create www-data
+      user: name=www-data state=present
+    - name: install docker-compose
+      get_url: 
+        url : https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: 'u+x,g+x'      
+  roles:
+    - { role: ansible-role-containerized-wordpress }
